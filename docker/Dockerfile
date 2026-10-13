@@ -23,4 +23,9 @@ RUN racket -e '(require racket/draw) (unless (send (make-bitmap 2 2) save-file "
     && test -s /tmp/racket-smoke.png \
     && rm /tmp/racket-smoke.png
 
+# profiling and leak checks
+RUN apt-get -y update && apt-get -y install golang-go graphviz libgoogle-perftools-dev valgrind \
+    && go install github.com/google/pprof@latest \
+    && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+
 ENV DEBIAN_FRONTEND=
