@@ -1,5 +1,7 @@
 # 598APE-HW2
 
+> **Artifact:** see [artifact.md](artifact.md) for how to build our Docker image, run and benchmark the code, check out each optimization's commit, and verify the output matches the baseline. It also lists every optimization with its speedup and commit hash.
+
 This repository contains code for homework 2 of 598APE.
 
 In particular, this repository is an implementation of Symbolic Regression and the various contexts it can be used in.

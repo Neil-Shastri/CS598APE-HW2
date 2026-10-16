@@ -1,51 +1,34 @@
 # Artifact
 
-## Setup
+## How to replicate
 
-Build the image and start a container from the repo root:
+We ran everything on the course VM (Intel Xeon Silver 4216 (x86) with 4 cores) inside the Docker image below. Our Makefile uses `-march=native` and an x86-only assembler flag (`-Wa,-mbranches-within-32B-boundaries`), so it needs an x86 machine.
+
+**1. Build the image and start a container** (from the repo root):
 
 ```
 ./dockerbuild.sh neilas3/598ape-hw2
 docker run -it --rm --security-opt seccomp=unconfined -v "$(pwd)":/host neilas3/598ape-hw2 /bin/bash
 ```
 
-We added pprof, graphviz, gperftools and valgrind to the end of the Dockerfile. Everything else is the same as the course one.
+The Dockerfile is the course one plus pprof/gperftools/graphviz/valgrind (for profiling).
 
-We ran everything on the course VM (4 cores) with g++ 13.3.0 from the image.
-
-## Running
-
-Inside the container, from `/host` (the program loads `benchmark/*.csv` relative to the current directory):
+**2. Build and run** (inside the container, from `/host`, since the program reads `benchmark/*.csv` relative to the current directory):
 
 ```
+cd /host
 make clean && make -j
-./genetic_benchmark diabetes | tail -1
-./genetic_benchmark cancer | tail -1
-./genetic_benchmark housing | tail -1
+./genetic_benchmark diabetes > diabetes.rkt && tail -1 diabetes.rkt
+./genetic_benchmark cancer > cancer.rkt && tail -1 cancer.rkt
+./genetic_benchmark housing > housing.rkt && tail -1 housing.rkt
 ```
 
-The time we report is the `;;Time(...)` line at the end of each run.
-
-## Evaluating an optimization
-
-Check out the commit from the table (outside the container), then rebuild and run inside it:
+**3. Test a specific optimization.** Check out its commit from the table below **outside** the container (git inside the container complains about the repo owner), then rebuild and rerun inside it like step 2:
 
 ```
-git checkout <commit>
-make clean && make -j && ./genetic_benchmark diabetes | tail -1
-```
-
-To check the output didn't change, save the output of the baseline commit and diff it against the new one, ignoring the time line:
-
-```
-diff <(grep -v '^;;Time(' base.rkt) <(grep -v '^;;Time(' new.rkt)
-```
-
-## Profiling
-
-```
-LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libprofiler.so.0 CPUPROFILE=out.prof ./genetic_benchmark diabetes > /dev/null
-/root/go/bin/pprof -http=0.0.0.0:8080 -no_browser ./genetic_benchmark out.prof
+git checkout <commit>      # outside the container, e.g. git checkout 246a157
+make clean && make -j      # inside the container
+git checkout main          # outside, to go back
 ```
 
 ## Optimizations
@@ -59,7 +42,7 @@ Times are diabetes / cancer / housing in seconds. Speedup is vs the baseline.
 | Add -march=native | 5.06 / 34.70 / 58.97 | 4.0x / 3.7x / 4.1x | cb55adb |
 | O(1) stack push/pop | 1.16 / 16.29 / 18.60 | 17.3x / 7.9x / 12.9x | 246a157 |
 | Stable sort + branch alignment flag | 1.12 / 10.65 / 18.62 | 17.9x / 12.1x / 12.9x | e8543a5 |
-| OpenMP over programs (4 threads) | 0.33 / 3.68 / 5.33 | 61.1x / 34.9x / 45.2x | TBD |
+| OpenMP over programs (4 threads) | 0.33 / 3.68 / 5.33 | 61.1x / 34.9x / 45.2x | 2889db9 |
 
 We also tried -O2 (2.0x, same output) and -Ofast (3.8-4.0x), but -Ofast turns on fast-math, which changed the evolved programs for cancer and housing (cancer test accuracy went from 0.947 to 0.894), so we didn't use it.
 
@@ -73,4 +56,4 @@ The programs get sorted at the end of training with an insertion sort, which cop
 
 This made diabetes and housing noticeably slower even though we didn't touch execute_kernel. We figured out execute_kernel just moved to a different address in the binary, and on this intel CPU that matters because of Intel's JCC erratum (https://stackoverflow.com/questions/70620820/why-does-adding-an-if-to-a-c-code-make-it-significantly-faster?utm_source=chatgpt.com). Compiling with -Wa,-mbranches-within-32B-boundaries fixed it. It's an x86 only flag but we only run on the VM.
 
-Almost all the time (94-99%) was now in scoring the programs, and each program gets scored on its own, so we used OpenMP to split the programs across the VM's 4 cores (execute_kernel and the MSE/logLoss loops). Each program still runs on a single thread start to finish, so the output is the same. We used schedule(dynamic) since program lengths vary a lot and it was faster than static. Cancer only gets ~2.9x because more of it is still serial (mostly zero-filling big buffers every generation).
+Almost all the time (94-99%) was now in scoring the programs, and each program gets scored on its own, so we used OpenMP to split the programs across the VM's 4 cores (execute_kernel and the MSE/logLoss loops). Each program still runs on a single thread start to finish, so the output is the same. We used schedule(dynamic) since program lengths vary a lot and it was faster than static. Cancer only gets about 2.9x because more of it is still serial (mostly zero-filling big buffers every generation).
