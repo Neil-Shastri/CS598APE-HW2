@@ -56,7 +56,8 @@ Times are diabetes / cancer / housing in seconds. Speedup is vs the baseline.
 |---|---|---|---|
 | Baseline (stock code, -O0) | 20.10 / 128.47 / 240.71 | 1.0x | e97c28e |
 | Compile with -O3 | 6.12 / 41.92 / 72.72 | 3.3x / 3.1x / 3.3x | 142472e |
-| Add -march=native | 5.06 / 34.70 / 58.97 | 4.0x / 3.7x / 4.1x | TBD |
+| Add -march=native | 5.06 / 34.70 / 58.97 | 4.0x / 3.7x / 4.1x | cb55adb |
+| O(1) stack push/pop | 1.16 / 16.29 / 18.56 | 17.3x / 7.9x / 13.0x | TBD |
 
 We also tried -O2 (2.0x, same output) and -Ofast (3.8-4.0x), but -Ofast turns on fast-math, which changed the evolved programs for cancer and housing (cancer test accuracy went from 0.947 to 0.894), so we didn't use it.
 
