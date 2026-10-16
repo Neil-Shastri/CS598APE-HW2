@@ -244,6 +244,7 @@ void meanSquareError(const uint64_t n_samples, const uint64_t n_progs,
   }
 
   // Compute absolute differences
+#pragma omp parallel for
   for (uint64_t pid = 0; pid < n_progs; ++pid) {
     for (uint64_t i = 0; i < n_samples; ++i) {
       error[pid * n_samples + i] = N * W[i] *
@@ -253,6 +254,7 @@ void meanSquareError(const uint64_t n_samples, const uint64_t n_progs,
   }
 
   // Average along rows
+#pragma omp parallel for
   for (uint64_t pid = 0; pid < n_progs; ++pid) {
     out[pid] = static_cast<math_t>(0);
     for (uint64_t i = 0; i < n_samples; ++i) {
@@ -296,6 +298,7 @@ void logLoss(const uint64_t n_samples, const uint64_t n_progs, const math_t *Y,
   // adapt it for the weighted version (turned out pre-multiplying N just
   // worked). Improving numerical stability in CUDA is ... :)
 
+#pragma omp parallel for
   for (uint64_t pid = 0; pid < n_progs; ++pid) {
     for (uint64_t i = 0; i < n_samples; ++i) {
       math_t logsig;
@@ -315,6 +318,7 @@ void logLoss(const uint64_t n_samples, const uint64_t n_progs, const math_t *Y,
   }
 
   // Take average along rows
+#pragma omp parallel for
   for (uint64_t pid = 0; pid < n_progs; ++pid) {
     out[pid] = static_cast<math_t>(0);
     for (uint64_t i = 0; i < n_samples; ++i) {

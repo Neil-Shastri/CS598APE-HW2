@@ -58,7 +58,8 @@ Times are diabetes / cancer / housing in seconds. Speedup is vs the baseline.
 | Compile with -O3 | 6.12 / 41.92 / 72.72 | 3.3x / 3.1x / 3.3x | 142472e |
 | Add -march=native | 5.06 / 34.70 / 58.97 | 4.0x / 3.7x / 4.1x | cb55adb |
 | O(1) stack push/pop | 1.16 / 16.29 / 18.60 | 17.3x / 7.9x / 12.9x | 246a157 |
-| Stable sort + branch alignment flag | 1.12 / 10.65 / 18.62 | 17.9x / 12.1x / 12.9x | TBD |
+| Stable sort + branch alignment flag | 1.12 / 10.65 / 18.62 | 17.9x / 12.1x / 12.9x | e8543a5 |
+| OpenMP over programs (4 threads) | 0.33 / 3.68 / 5.33 | 61.1x / 34.9x / 45.2x | TBD |
 
 We also tried -O2 (2.0x, same output) and -Ofast (3.8-4.0x), but -Ofast turns on fast-math, which changed the evolved programs for cancer and housing (cancer test accuracy went from 0.947 to 0.894), so we didn't use it.
 
@@ -71,3 +72,5 @@ The stack push/pop used to loop over all 20 slots to find the top of the stack, 
 The programs get sorted at the end of training with an insertion sort, which copies a whole program every time it shifts one which is N^2 copies, and cancer has 16384 programs, so it ended up being about a third of cancer's time after the stack fix. We switched it to std::stable_sort on indices so each program only gets copied twice (stable so ties stay in the same order).
 
 This made diabetes and housing noticeably slower even though we didn't touch execute_kernel. We figured out execute_kernel just moved to a different address in the binary, and on this intel CPU that matters because of Intel's JCC erratum (https://stackoverflow.com/questions/70620820/why-does-adding-an-if-to-a-c-code-make-it-significantly-faster?utm_source=chatgpt.com). Compiling with -Wa,-mbranches-within-32B-boundaries fixed it. It's an x86 only flag but we only run on the VM.
+
+Almost all the time (94-99%) was now in scoring the programs, and each program gets scored on its own, so we used OpenMP to split the programs across the VM's 4 cores (execute_kernel and the MSE/logLoss loops). Each program still runs on a single thread start to finish, so the output is the same. We used schedule(dynamic) since program lengths vary a lot and it was faster than static. Cancer only gets ~2.9x because more of it is still serial (mostly zero-filling big buffers every generation).

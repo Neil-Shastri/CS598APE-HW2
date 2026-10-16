@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -O3 -march=native -Wa,-mbranches-within-32B-boundaries -I include -I.
+CXXFLAGS := -std=c++17 -Wall -Wextra -O3 -march=native -fopenmp -Wa,-mbranches-within-32B-boundaries -I include -I.
 
 # Directories
 SRC_DIR := src
